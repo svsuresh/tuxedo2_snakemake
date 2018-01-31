@@ -1,0 +1,11 @@
+ref:
+  # Tophat index
+  index: "/home/suresh/reference/hg38/hg38.chr22"
+  # gtf index
+  annotation: "/home/suresh/reference/hg38/ucsc.ncbirefseq.hg38.chr22.gtf"
+  # Reference
+  reference: "/home/suresh/reference/hg38/hg38.chr22.fa"
+  # Exon
+  exon: "/home/suresh/reference/hg38/ucsc.ncbirefseq.hg38.chr22.exon.gtf"
+  # ss
+  ss: "/home/suresh/reference/hg38/ucsc.ncbirefseq.hg38.chr22.splice.gtf"

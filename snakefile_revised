@@ -1,0 +1,159 @@
+""".
+
+Author: suresh
+Aim: A simple Snakemake workflow to process paired-end stranded RNA-Seq.
+Run: snakemake -s Snakefile
+Latest modification:
+  - todo
+"""
+
+import glob
+import os
+from os.path import join
+from snakemake.utils import R
+
+BASE_DIR = "/home/suresh/"
+raw_data = BASE_DIR + "Desktop/raw_data"
+
+if os.path.exists("rnaseq_analysis"):
+    print ("Your base directory is rnaseq analysis and the directory exists")
+else:
+    print ("creating rnaseq_analysis directory")
+    os.mkdir("rnaseq_analysis")
+    print ("rnaseq_analysis directory created")
+WDIR = BASE_DIR + "Desktop/rnaseq_analysis/"
+
+workdir: WDIR
+
+# print("The current working directory is " + WDIR)
+
+# Reference files and index locations
+# (fasta, gtf,index locations)
+INDEX = BASE_DIR + "/reference/hg38/hg38.chr22"
+GTF = BASE_DIR + "/reference/hg38/ucsc.ncbirefseq.hg38.chr22.gtf"
+FASTA = BASE_DIR + "/reference/hg38/hg38.chr22.fa"
+
+sample = glob_wildcards(raw_data + "/{sample}_r1.fastq.gz").sample
+
+## create directories for analysis
+
+DIR = ["fastqc", "cutadapt", "hisat2", "ballgown", "stringtie"]
+
+for dir in DIR:
+    if os.path.exists(dir):
+        print (dir + " directory exists")
+    else:
+        os.mkdir(dir)
+
+
+
+rule all:
+    input:
+        expand('fastqc/{sample}_r1_fastqc.zip', sample=sample),
+        expand('fastqc/{sample}_r2_fastqc.zip', sample=sample),
+        expand('cutadapt/{sample}_r1_cutadapt.fastq.gz', sample=sample),
+        expand('cutadapt/{sample}_r2_cutadapt.fastq.gz', sample=sample),
+        expand('cutadapt/{sample}_r1_cutadapt_fastqc.zip', sample=sample),
+        expand('hisat2/{sample}.cutadapt.sam', sample=sample),
+        expand('hisat2/{sample}.cutadapt.bam', sample=sample),
+        expand('stringtie/{sample}/transcript.gtf', sample=sample),
+        expand('stringtie/{sample}/gene_abundances.tsv', sample=sample),
+        expand('stringtie/{sample}/cov_ref.gtf', sample=sample),
+        expand('stringtie/merge_transcripts.gtf'),
+        expand('ballgown/SigDE.txt')
+
+
+
+rule fastqc:
+    input:
+        r1 = join(raw_data, "{sample}_r1.fastq.gz"),
+        r2 = join(raw_data, "{sample}_r2.fastq.gz")
+
+    output:
+        r1 = 'fastqc/{sample}_r1_fastqc.zip',
+        r2 = 'fastqc/{sample}_r2_fastqc.zip'
+    message:
+        "--- running fastqc ---"
+    shell: """
+        fastqc  {input.r1} {input.r2} -q -f fastq -o fastqc/
+    """
+
+
+rule cutadapt:
+    input:
+        r1 = join(raw_data, "{sample}_r1.fastq.gz"),
+        r2 = join(raw_data, "{sample}_r2.fastq.gz")
+
+    output:
+        r1 = 'cutadapt/{sample}_r1_cutadapt.fastq.gz',
+        r2 = 'cutadapt/{sample}_r2_cutadapt.fastq.gz'
+    message:
+        "--- running cutadapt ---"
+    shell: """
+        cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT  -o {output.r1} -p {output.r2} {input.r1} {input.r2}
+    """
+
+rule fastqc_after:
+    input:
+        r1 = 'cutadapt/{sample}_r1_cutadapt.fastq.gz',
+        r2 = 'cutadapt/{sample}_r2_cutadapt.fastq.gz'
+
+    output:
+        r1 = 'cutadapt/{sample}_r1_cutadapt_fastqc.zip',
+        r2 = 'cutadapt/{sample}_r2_cutadapt_fastqc.zip'
+    message:
+        "--- running fastqc again ---"
+    shell: """
+        fastqc  {input.r1} {input.r2} -q -f fastq -o cutadapt/
+    """
+
+rule hisat2:
+    input:
+        r1 = 'cutadapt/{sample}_r1_cutadapt.fastq.gz',
+        r2 = 'cutadapt/{sample}_r2_cutadapt.fastq.gz'
+    output:
+        r1 = 'hisat2/{sample}.cutadapt.sam'
+    message:
+        "------aligning with hisat2....wait.."
+    shell: """
+        hisat2  -x {INDEX} --dta  --rna-strandness RF -1 {input.r1}  -2 {input.r2} -S {output.r1}
+    """
+
+rule create_bams:
+    input:
+        r1 = 'hisat2/{sample}.cutadapt.sam'
+    output:
+        r1 = 'hisat2/{sample}.cutadapt.bam'
+
+    shell: """
+    samtools view -bh {input.r1} | samtools sort - -o {output.r1}; samtools index {output.r1}
+    """
+
+rule stringtie:
+    input:
+        r1 = 'hisat2/{sample}.cutadapt.bam'
+    output:
+        r1 = 'stringtie/{sample}/transcript.gtf',
+        r2 = 'stringtie/{sample}/gene_abundances.tsv',
+        r3 = 'stringtie/{sample}/cov_ref.gtf'
+
+    shell: """
+    stringtie -G {GTF} --rf  -e -B -o {output.r1} -A {output.r2} -C {output.r3} --rf {input.r1}
+    """
+
+rule gtf_merge:
+    input:
+        r1 = expand('stringtie/{sample}/transcript.gtf', sample=sample)
+    output:
+        r1 = 'stringtie/merge_transcripts.gtf'
+    threads: 2
+    shell: """
+    stringtie -p {threads} --merge  -G {GTF} -o {output.r1} {input.r1}
+    """
+
+rule ballgown:
+    input: 'stringtie/merge_transcripts.gtf'
+    output: 'ballgown/SigDE.txt'
+    shell: """
+        Rscript ballgown.R {input} {output}
+    """
