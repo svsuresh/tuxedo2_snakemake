@@ -1,4 +1,4 @@
-This repository contains snakemake script for analyzing RNAseq samples from Griffith lab [tutorial](https://github.com/griffithlab/rnaseq_tutorial/wiki) and data used in the tutorial is available [here]((http://genomedata.org/rnaseq-tutorial/practical.tar). This script follows Tuxedo2 protocol (HISAT2-STRINGTIE-BALLGOWN). Workflow has following steps:
+This repository contains snakemake script for analyzing RNAseq samples from Griffith lab [tutorial](https://github.com/griffithlab/rnaseq_tutorial/wiki) and data used in the tutorial is available [here](http://genomedata.org/rnaseq-tutorial/practical.tar). This script follows Tuxedo2 protocol (HISAT2-STRINGTIE-BALLGOWN). Workflow has following steps:
 * Quality check by fastqc
 * Adapter trimming by cutadapt
 * Quality check post adapter trimming by fastqc
