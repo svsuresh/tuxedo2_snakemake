@@ -6,7 +6,7 @@ This repository contains snakemake script for analyzing RNAseq samples from Grif
 * Transcript quanitification with Stringtie
 * Statistical tests and visualization with Ballgown (in R)
 
-[Tuxedo Workflow]([https://drive.google.com/uc?id=1TIwsrxA3w64SoJYh6OasGBo8iVYQMiQf](https://drive.google.com/file/d/15TnVQQkSYMvWQLSvezj8G93M9X-E1xz0/view?usp=sharing))
+[Tuxedo Workflow](https://drive.google.com/file/d/15TnVQQkSYMvWQLSvezj8G93M9X-E1xz0/view?usp=sharing)
 
 Please **note** that **this script is not production ready**. This is for beginners in using snakemake. For generating graph, snakefile should be in sentence case.
 
